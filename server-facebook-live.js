@@ -10,8 +10,6 @@ const GEMINI_LIVE_MODEL =
   process.env.GEMINI_MODEL ||
   'gemini-2.5-flash-native-audio-preview-12-2025';
 
-// Good Khmer test voices: Zephyr, Aoede, Leda, Kore.
-// Keep your current voice if it sounds good.
 const GEMINI_VOICE_NAME = process.env.GEMINI_VOICE_NAME || 'Zephyr';
 
 if (!GEMINI_API_KEY) {
@@ -26,10 +24,10 @@ app.get('/', (_req, res) => {
   res.type('text/plain').send(
     `Angkor NAGA Facebook Live Control Server is running\n` +
     `Language: Khmer only\n` +
+    `Talk motion: waits for real audio\n` +
     `Model: ${GEMINI_LIVE_MODEL}\n` +
     `Voice: ${GEMINI_VOICE_NAME}\n` +
-    `Room default: angkor-naga\n` +
-    `Mode: clean display + private control\n`
+    `Room default: angkor-naga\n`
   );
 });
 
@@ -38,7 +36,7 @@ app.get('/health', (_req, res) => {
     ok: true,
     brand: 'Angkor NAGA',
     language: 'Khmer only',
-    mode: 'clean display + private control',
+    talkMotion: 'waits for real audio',
     model: GEMINI_LIVE_MODEL,
     voice: GEMINI_VOICE_NAME,
     hasGeminiKey: Boolean(GEMINI_API_KEY),
@@ -56,7 +54,6 @@ const server = app.listen(PORT, () => {
 
 const wss = new WebSocketServer({ server });
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
 const rooms = new Map();
 
 function getRoom(roomId = 'angkor-naga') {
@@ -74,15 +71,9 @@ function getRoom(roomId = 'angkor-naga') {
 }
 
 function safeSend(client, payload) {
-  try {
-    if (client.readyState === 1) client.send(JSON.stringify(payload));
-  } catch {}
+  try { if (client.readyState === 1) client.send(JSON.stringify(payload)); } catch {}
 }
-
-function broadcast(clients, payload) {
-  for (const client of clients) safeSend(client, payload);
-}
-
+function broadcast(clients, payload) { for (const client of clients) safeSend(client, payload); }
 function cleanText(value, maxLength = 3000) {
   if (typeof value !== 'string') return '';
   return value.trim().slice(0, maxLength);
@@ -90,13 +81,13 @@ function cleanText(value, maxLength = 3000) {
 
 function buildAngkorNagaLiveInstruction() {
   return `
-អ្នកគឺជាតួពិធីករស្វាតូចរាជវង្ស / ហនុមានតូច របស់ Angkor NAGA នៅលើ Facebook Live។
+អ្នកគឺជាពិធីករស្វាតូចរាជវង្ស / ហនុមានតូច របស់ Angkor NAGA នៅលើ Facebook Live។
 
-ច្បាប់សំខាន់បំផុត:
+ច្បាប់សំខាន់:
 - និយាយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។
 - ទោះអ្នកមើលសួរជាអង់គ្លេស ថៃ ចិន ឬភាសាផ្សេង ក៏ត្រូវឆ្លើយតែជាភាសាខ្មែរ។
-- ប្រយោគខ្លីមួយប៉ុណ្ណោះ ៦ ទៅ ១៤ ពាក្យ។
-- សំឡេង និងអារម្មណ៍៖ ស្វាតូចគួរឲ្យស្រឡាញ់ សប្បាយ រួសរាយ មានថាមពលហនុមានតូច។
+- ឆ្លើយមួយប្រយោគខ្លី ៦ ទៅ ១៤ ពាក្យ។
+- អារម្មណ៍សំឡេង៖ ស្វាតូចគួរឲ្យស្រឡាញ់ សប្បាយ រួសរាយ មានថាមពលហនុមានតូច។
 - សុវត្ថិភាពសម្រាប់ Facebook Live។
 - កុំចែចង់។ កុំប្រើពាក្យ adult, sexy, baby, girlfriend, love។
 - កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
@@ -145,15 +136,14 @@ async function startGemini(room) {
         if (content?.modelTurn?.parts) {
           for (const part of content.modelTurn.parts) {
             if (part.inlineData?.data) {
+              // IMPORTANT: Display page starts talk motion when this audio arrives.
               broadcast(room.displays, {
                 type: 'audio',
                 data: part.inlineData.data,
                 mimeType: part.inlineData.mimeType || 'audio/pcm;rate=24000',
               });
             }
-            if (part.text) {
-              broadcast(room.controls, { type: 'text', text: part.text });
-            }
+            if (part.text) broadcast(room.controls, { type: 'text', text: part.text });
           }
         }
 
@@ -162,9 +152,7 @@ async function startGemini(room) {
           broadcast(room.controls, { type: 'status', message: 'ឆ្លើយរួចហើយ។' });
         }
       },
-      onerror: (e) => {
-        broadcast(room.controls, { type: 'error', message: e?.message || String(e) });
-      },
+      onerror: (e) => broadcast(room.controls, { type: 'error', message: e?.message || String(e) }),
       onclose: () => {
         room.ready = false;
         room.geminiSession = null;
@@ -179,11 +167,8 @@ async function startGemini(room) {
 
 async function sendToGemini(room, input) {
   await startGemini(room);
-  if (room.ready && room.geminiSession) {
-    room.geminiSession.sendRealtimeInput(input);
-  } else {
-    room.pending.push(input);
-  }
+  if (room.ready && room.geminiSession) room.geminiSession.sendRealtimeInput(input);
+  else room.pending.push(input);
 }
 
 wss.on('connection', (client) => {
@@ -218,7 +203,9 @@ wss.on('connection', (client) => {
         if (!text) return;
 
         broadcast(room.controls, { type: 'status', message: `ផ្ញើ comment ទៅស្វាតូច Angkor NAGA: ${text}` });
-        broadcast(room.displays, { type: 'start_talk' });
+
+        // IMPORTANT: Do NOT broadcast start_talk here.
+        // Motion starts only when real audio arrives at the display page.
 
         await sendToGemini(room, {
           text:
