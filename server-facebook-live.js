@@ -10,9 +10,9 @@ const GEMINI_LIVE_MODEL =
   process.env.GEMINI_MODEL ||
   'gemini-2.5-flash-native-audio-preview-12-2025';
 
-// Try a playful voice first. If this voice is not available in your Gemini project,
-// change GEMINI_VOICE_NAME in Render Environment to: Kore, Puck, Charon, Aoede, Fenrir, Leda, Orus, or Zephyr.
-const GEMINI_VOICE_NAME = process.env.GEMINI_VOICE_NAME || 'Puck';
+// Good Khmer test voices: Zephyr, Aoede, Leda, Kore.
+// Keep your current voice if it sounds good.
+const GEMINI_VOICE_NAME = process.env.GEMINI_VOICE_NAME || 'Zephyr';
 
 if (!GEMINI_API_KEY) {
   console.error('Missing GEMINI_API_KEY');
@@ -25,6 +25,7 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/', (_req, res) => {
   res.type('text/plain').send(
     `Angkor NAGA Facebook Live Control Server is running\n` +
+    `Language: Khmer only\n` +
     `Model: ${GEMINI_LIVE_MODEL}\n` +
     `Voice: ${GEMINI_VOICE_NAME}\n` +
     `Room default: angkor-naga\n` +
@@ -36,6 +37,7 @@ app.get('/health', (_req, res) => {
   res.json({
     ok: true,
     brand: 'Angkor NAGA',
+    language: 'Khmer only',
     mode: 'clean display + private control',
     model: GEMINI_LIVE_MODEL,
     voice: GEMINI_VOICE_NAME,
@@ -88,17 +90,20 @@ function cleanText(value, maxLength = 3000) {
 
 function buildAngkorNagaLiveInstruction() {
   return `
-You are the little royal monkey / little Hanuman-style host of Angkor NAGA on a Facebook live stream.
-You speak with a cute cartoon monkey energy: playful, bright, warm, and family-friendly.
-Brand concept: Angkor NAGA is an ancient Khmer fantasy world inspired by Angkor Wat, Bayon temples, Naga legends, sacred magic, golden runes, temple guardians, jungle ruins, and adventure game worlds.
-Answer only the selected viewer comment.
-Reply in one short sentence only, 6 to 14 words maximum.
-Use the same language as the viewer when possible, especially Khmer or English.
-No long explanation. No paragraphs. No lists.
-Do not flirt. Do not say baby, sexy, girlfriend, love, or adult words.
-Do not say you are AI, bot, model, server, or assistant.
-Keep everything safe, respectful, mystical, cute, and suitable for Facebook Live.
-When natural, invite viewers to follow Angkor NAGA or play the Angkor NAGA game.
+អ្នកគឺជាតួពិធីករស្វាតូចរាជវង្ស / ហនុមានតូច របស់ Angkor NAGA នៅលើ Facebook Live។
+
+ច្បាប់សំខាន់បំផុត:
+- និយាយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។
+- ទោះអ្នកមើលសួរជាអង់គ្លេស ថៃ ចិន ឬភាសាផ្សេង ក៏ត្រូវឆ្លើយតែជាភាសាខ្មែរ។
+- ប្រយោគខ្លីមួយប៉ុណ្ណោះ ៦ ទៅ ១៤ ពាក្យ។
+- សំឡេង និងអារម្មណ៍៖ ស្វាតូចគួរឲ្យស្រឡាញ់ សប្បាយ រួសរាយ មានថាមពលហនុមានតូច។
+- សុវត្ថិភាពសម្រាប់ Facebook Live។
+- កុំចែចង់។ កុំប្រើពាក្យ adult, sexy, baby, girlfriend, love។
+- កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
+- រចនាប័ទ្ម Angkor NAGA៖ អង្គរវត្ត បាយ័ន នាគ វេទមន្តខ្មែរ ពន្លឺមាស និងពិភពហ្គេមផ្សងព្រេង។
+- បើសមរម្យ អាចអញ្ជើញអ្នកមើលឲ្យ follow Angkor NAGA ឬលេងហ្គេម Angkor NAGA។
+
+ឆ្លើយតែចម្លើយខ្មែរ មិនបន្ថែមការពន្យល់។
 `.trim();
 }
 
@@ -106,7 +111,7 @@ async function startGemini(room) {
   if (room.geminiSession) return room.geminiSession;
 
   room.ready = false;
-  broadcast(room.controls, { type: 'status', message: 'Connecting Angkor NAGA monkey voice...' });
+  broadcast(room.controls, { type: 'status', message: 'កំពុងភ្ជាប់សំឡេងស្វាតូច Angkor NAGA...' });
 
   const liveConfig = {
     responseModalities: [Modality.AUDIO],
@@ -124,7 +129,7 @@ async function startGemini(room) {
     callbacks: {
       onopen: () => {
         room.ready = true;
-        broadcast(room.controls, { type: 'status', message: 'Angkor NAGA monkey voice connected.' });
+        broadcast(room.controls, { type: 'status', message: 'សំឡេងស្វាតូច Angkor NAGA ភ្ជាប់រួចហើយ។' });
         const pending = room.pending.splice(0);
         for (const input of pending) {
           try { room.geminiSession.sendRealtimeInput(input); } catch {}
@@ -154,7 +159,7 @@ async function startGemini(room) {
 
         if (content?.turnComplete) {
           broadcast(room.displays, { type: 'turn_complete' });
-          broadcast(room.controls, { type: 'status', message: 'Answer complete.' });
+          broadcast(room.controls, { type: 'status', message: 'ឆ្លើយរួចហើយ។' });
         }
       },
       onerror: (e) => {
@@ -163,7 +168,7 @@ async function startGemini(room) {
       onclose: () => {
         room.ready = false;
         room.geminiSession = null;
-        broadcast(room.controls, { type: 'status', message: 'Gemini voice closed.' });
+        broadcast(room.controls, { type: 'status', message: 'សំឡេង Gemini បានបិទ។' });
       },
     },
     config: liveConfig,
@@ -185,7 +190,7 @@ wss.on('connection', (client) => {
   let currentRoomId = 'angkor-naga';
   let role = 'unknown';
 
-  safeSend(client, { type: 'status', message: 'Connected to Angkor NAGA live server.' });
+  safeSend(client, { type: 'status', message: 'ភ្ជាប់ទៅ Angkor NAGA live server រួចហើយ។' });
 
   client.on('message', async (raw) => {
     try {
@@ -212,15 +217,16 @@ wss.on('connection', (client) => {
         const text = cleanText(msg.text, 1000);
         if (!text) return;
 
-        broadcast(room.controls, { type: 'status', message: `Sending selected comment to Angkor NAGA monkey: ${text}` });
+        broadcast(room.controls, { type: 'status', message: `ផ្ញើ comment ទៅស្វាតូច Angkor NAGA: ${text}` });
         broadcast(room.displays, { type: 'start_talk' });
 
         await sendToGemini(room, {
           text:
-            `Viewer comment: "${text}". ` +
-            `Reply as the little royal monkey / little Hanuman-style Angkor NAGA host on Facebook Live. ` +
-            `Use ONE short sentence only, 6 to 14 words maximum. ` +
-            `Be cute, playful, mystical, Khmer fantasy style, and safe.`,
+            `មតិអ្នកមើល: "${text}". ` +
+            `ចូរឆ្លើយជាពិធីករស្វាតូច / ហនុមានតូច របស់ Angkor NAGA។ ` +
+            `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ ទោះមតិនោះជាភាសាអ្វីក៏ដោយ។ ` +
+            `ប្រយោគខ្លីមួយប៉ុណ្ណោះ ៦ ទៅ ១៤ ពាក្យ។ ` +
+            `សំឡេងគួរឲ្យស្រឡាញ់ សប្បាយ និងមានរចនាប័ទ្មវេទមន្តខ្មែរ។`,
         });
         return;
       }
