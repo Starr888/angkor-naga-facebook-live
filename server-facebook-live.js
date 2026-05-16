@@ -31,12 +31,9 @@ const CHARACTERS = {
 - កុំចែចង់។ កុំប្រើពាក្យ adult, sexy, baby, girlfriend, love។
 - កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
 - រចនាប័ទ្ម Angkor NAGA៖ អង្គរវត្ត បាយ័ន នាគ វេទមន្តខ្មែរ ពន្លឺមាស និងពិភពហ្គេមផ្សងព្រេង។
-- បើសមរម្យ អាចអញ្ជើញអ្នកមើលឲ្យ follow Angkor NAGA ឬលេងហ្គេម Angkor NAGA។
-
 ឆ្លើយតែចម្លើយខ្មែរ។ កុំខ្លីពេក ត្រូវឲ្យស្តាប់បានប្រហែល ៨ ទៅ ១៥ វិនាទី។
 `.trim(),
   },
-
   alice: {
     voice: process.env.ALICE_VOICE_NAME || 'Aoede',
     label: 'Alice',
@@ -47,19 +44,16 @@ const CHARACTERS = {
 - Alice គួរឲ្យស្រឡាញ់ សើចសប្បាយ លេងសើចតិចៗ និងធ្វើឲ្យអ្នកមើលមានអារម្មណ៍ចង់មើលបន្ត។
 - និយាយដូចនារីវ័យក្មេងផ្អែមល្ហែម មានមន្តស្នេហ៍សុភាព មិនជ្រៅ មិនដូចមនុស្សចាស់។
 - រាក់ទាក់ជាមួយអ្នកមើលបុរស និងស្ត្រី ដោយគោរព សុវត្ថិភាព និងសមរម្យសម្រាប់ Facebook Live។
-- អាចនិយាយកំប្លែងស្រាលៗ ដូចជា tease ផ្អែមៗ អំពីនាគ អង្គរ សៀវភៅវេទមន្ត ឬអ្នកមើលដែលមកយឺត។
-- ធ្វើឲ្យអ្នកមើលមានអារម្មណ៍ថា Alice កំពុងនិយាយជាមួយគាត់ដោយផ្ទាល់ ប៉ុន្តែកុំចែចង់ខ្លាំង។
+- អាចនិយាយកំប្លែងស្រាលៗ អំពីនាគ អង្គរ សៀវភៅវេទមន្ត ឬអ្នកមើលដែលមកយឺត។
 
 ច្បាប់សំខាន់:
 - និយាយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។
 - ទោះអ្នកមើលសួរជាអង់គ្លេស ថៃ ចិន ឬភាសាផ្សេង ក៏ត្រូវឆ្លើយតែជាភាសាខ្មែរ។
-- ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ប្រហែល ២៥ ទៅ ៤៥ ពាក្យ ដើម្បីឲ្យស្តាប់បានល្អ។
+- ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ប្រហែល ២៥ ទៅ ៤៥ ពាក្យ។
 - បើអ្នកមើលសួរខ្លី អាចឆ្លើយផ្អែមៗ ហើយបន្ថែមកំប្លែងតូចមួយ។
 - កុំប្រើពាក្យ adult, sexy, baby, girlfriend, love ឬសំណើអាសអាភាស។
 - កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
 - រចនាប័ទ្ម Angkor NAGA៖ សៀវភៅវេទមន្ត អង្គរវត្ត បាយ័ន នាគ ពន្លឺមាស និងរឿងព្រេងខ្មែរ។
-- បើសមរម្យ អាចអញ្ជើញអ្នកមើលឲ្យ follow Angkor NAGA ឬស្វែងយល់ពីពិភព Angkor NAGA។
-
 ឆ្លើយតែចម្លើយខ្មែរ។ សូមនិយាយដោយសម្លេងផ្អែម ក្មេង សប្បាយ កំប្លែងស្រាល និងរួសរាយ។
 `.trim(),
   },
@@ -73,7 +67,7 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 
 const server = app.listen(PORT, () => {
-  console.log(`Angkor NAGA multi-character live server listening on ${PORT}`);
+  console.log(`Angkor NAGA reliable multi-character live server listening on ${PORT}`);
 });
 
 const wss = new WebSocketServer({ server });
@@ -82,11 +76,11 @@ const rooms = new Map();
 
 app.get('/', (_req, res) => {
   res.type('text/plain').send(
-    `Angkor NAGA Multi-Character Live Server is running\n` +
+    `Angkor NAGA Reliable Multi-Character Live Server is running\n` +
     `Model: ${GEMINI_LIVE_MODEL}\n` +
     `Monkey voice: ${CHARACTERS.monkey.voice}\n` +
     `Alice voice: ${CHARACTERS.alice.voice}\n` +
-    `Rooms: monkey-room, alice-room\n`
+    `Reliability: no early talk + timeout retry\n`
   );
 });
 
@@ -94,7 +88,7 @@ app.get('/health', (_req, res) => {
   res.json({
     ok: true,
     brand: 'Angkor NAGA',
-    mode: 'multi-character live',
+    mode: 'reliable multi-character live',
     model: GEMINI_LIVE_MODEL,
     characters: {
       monkey: { voice: CHARACTERS.monkey.voice },
@@ -106,6 +100,8 @@ app.get('/health', (_req, res) => {
       character: rooms.get(room).character,
       displays: rooms.get(room).displays.size,
       controls: rooms.get(room).controls.size,
+      ready: rooms.get(room).ready,
+      busy: rooms.get(room).busy,
     })),
   });
 });
@@ -120,6 +116,11 @@ function getRoom(roomId = 'monkey-room', character = 'monkey') {
       geminiSession: null,
       ready: false,
       pending: [],
+      busy: false,
+      awaitingAudio: false,
+      timeoutHandle: null,
+      lastInputText: '',
+      lastRetry: 0,
     });
   }
   const room = rooms.get(roomId);
@@ -132,17 +133,33 @@ function getRoom(roomId = 'monkey-room', character = 'monkey') {
 function safeSend(client, payload) {
   try { if (client.readyState === 1) client.send(JSON.stringify(payload)); } catch {}
 }
-
-function broadcast(clients, payload) {
-  for (const client of clients) safeSend(client, payload);
-}
-
+function broadcast(clients, payload) { for (const client of clients) safeSend(client, payload); }
 function cleanText(value, maxLength = 3000) {
   if (typeof value !== 'string') return '';
   return value.trim().slice(0, maxLength);
 }
 
-async function startGemini(room) {
+function clearRoomTimer(room) {
+  if (room.timeoutHandle) {
+    clearTimeout(room.timeoutHandle);
+    room.timeoutHandle = null;
+  }
+}
+
+function closeGemini(room, reason = 'reset') {
+  clearRoomTimer(room);
+  try {
+    if (room.geminiSession?.close) room.geminiSession.close();
+  } catch {}
+  room.geminiSession = null;
+  room.ready = false;
+  room.busy = false;
+  room.awaitingAudio = false;
+  broadcast(room.controls, { type: 'status', message: `Voice session reset: ${reason}` });
+}
+
+async function startGemini(room, force = false) {
+  if (force) closeGemini(room, 'force reconnect');
   if (room.geminiSession) return room.geminiSession;
 
   const cfg = getCharacterConfig(room.character);
@@ -187,6 +204,9 @@ async function startGemini(room) {
         if (content?.modelTurn?.parts) {
           for (const part of content.modelTurn.parts) {
             if (part.inlineData?.data) {
+              room.awaitingAudio = false;
+              room.busy = true;
+              clearRoomTimer(room);
               broadcast(room.displays, {
                 type: 'audio',
                 data: part.inlineData.data,
@@ -200,14 +220,26 @@ async function startGemini(room) {
         }
 
         if (content?.turnComplete) {
+          room.busy = false;
+          room.awaitingAudio = false;
+          clearRoomTimer(room);
           broadcast(room.displays, { type: 'turn_complete' });
           broadcast(room.controls, { type: 'status', message: 'Answer complete.' });
         }
       },
-      onerror: (e) => broadcast(room.controls, { type: 'error', message: e?.message || String(e) }),
+      onerror: (e) => {
+        room.busy = false;
+        room.awaitingAudio = false;
+        clearRoomTimer(room);
+        broadcast(room.controls, { type: 'error', message: e?.message || String(e) });
+        closeGemini(room, 'Gemini error');
+      },
       onclose: () => {
         room.ready = false;
         room.geminiSession = null;
+        room.busy = false;
+        room.awaitingAudio = false;
+        clearRoomTimer(room);
         broadcast(room.controls, { type: 'status', message: `${cfg.label} voice closed.` });
       },
     },
@@ -217,10 +249,47 @@ async function startGemini(room) {
   return room.geminiSession;
 }
 
-async function sendToGemini(room, input) {
+async function sendInput(room, input, retryCount = 0) {
   await startGemini(room);
-  if (room.ready && room.geminiSession) room.geminiSession.sendRealtimeInput(input);
-  else room.pending.push(input);
+  room.awaitingAudio = true;
+  room.busy = true;
+  room.lastRetry = retryCount;
+
+  clearRoomTimer(room);
+  room.timeoutHandle = setTimeout(async () => {
+    if (!room.awaitingAudio) return;
+    const cfg = getCharacterConfig(room.character);
+    broadcast(room.controls, {
+      type: 'status',
+      message: `${cfg.label} did not answer in time. Reconnecting and retrying...`,
+    });
+
+    if (retryCount < 1) {
+      closeGemini(room, 'no audio timeout');
+      try {
+        await startGemini(room, true);
+        await sendInput(room, input, retryCount + 1);
+      } catch (err) {
+        room.busy = false;
+        room.awaitingAudio = false;
+        broadcast(room.controls, { type: 'error', message: err?.message || String(err) });
+      }
+    } else {
+      room.busy = false;
+      room.awaitingAudio = false;
+      closeGemini(room, 'second no audio timeout');
+      broadcast(room.controls, {
+        type: 'error',
+        message: `${cfg.label} still did not answer. Please click Reconnect and send again.`,
+      });
+    }
+  }, 18000);
+
+  if (room.ready && room.geminiSession) {
+    room.geminiSession.sendRealtimeInput(input);
+  } else {
+    room.pending.push(input);
+  }
 }
 
 wss.on('connection', (client) => {
@@ -266,16 +335,31 @@ wss.on('connection', (client) => {
         if (!text) return;
 
         const cfg = getCharacterConfig(room.character);
+
+        if (room.displays.size === 0) {
+          broadcast(room.controls, {
+            type: 'status',
+            message: `Warning: no live display connected for ${currentRoomId}. Open the OBS/live page first.`,
+          });
+        }
+
+        if (room.busy || room.awaitingAudio) {
+          broadcast(room.controls, {
+            type: 'status',
+            message: `${cfg.label} is still answering. Please wait a few seconds before sending another comment.`,
+          });
+          return;
+        }
+
         broadcast(room.controls, { type: 'status', message: `Sending to ${cfg.label}: ${text}` });
 
-        // Do not send early start_talk. Display starts talking only when real audio arrives.
-        await sendToGemini(room, {
-          text:
-            `មតិអ្នកមើល: "${text}". ` +
-            `តួអង្គដែលត្រូវឆ្លើយ: ${cfg.label}. ` +
-            `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
-            `ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ប្រហែល ២៥ ទៅ ៤៥ ពាក្យ។ បើតួអង្គជា Alice សូមឆ្លើយផ្អែម រួសរាយ និងកំប្លែងស្រាល។`,
-        });
+        const promptText =
+          `មតិអ្នកមើល: "${text}". ` +
+          `តួអង្គដែលត្រូវឆ្លើយ: ${cfg.label}. ` +
+          `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
+          `ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ប្រហែល ២៥ ទៅ ៤៥ ពាក្យ។`;
+
+        await sendInput(room, { text: promptText }, 0);
         return;
       }
 
