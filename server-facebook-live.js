@@ -331,6 +331,25 @@ wss.on('connection', (client) => {
         return;
       }
 
+
+      if (msg.type === 'music_command') {
+        const command = cleanText(msg.command || '', 30);
+        const url = cleanText(msg.url || '', 2000);
+        const volumeRaw = Number(msg.volume);
+        const volume = Number.isFinite(volumeRaw) ? Math.max(0, Math.min(1, volumeRaw)) : 0.22;
+        broadcast(room.displays, {
+          type: 'music_command',
+          command,
+          url,
+          volume,
+        });
+        broadcast(room.controls, {
+          type: 'status',
+          message: `Music command sent to live page: ${command}`,
+        });
+        return;
+      }
+
       if (msg.type === 'control_comment') {
         const text = cleanText(msg.text, 1000);
         if (!text) return;
