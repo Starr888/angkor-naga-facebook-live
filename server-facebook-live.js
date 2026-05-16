@@ -10,77 +10,16 @@ const GEMINI_LIVE_MODEL =
   process.env.GEMINI_MODEL ||
   'gemini-2.5-flash-native-audio-preview-12-2025';
 
-const GEMINI_VOICE_NAME = process.env.GEMINI_VOICE_NAME || 'Zephyr';
-
 if (!GEMINI_API_KEY) {
   console.error('Missing GEMINI_API_KEY');
   process.exit(1);
 }
 
-const app = express();
-app.use(express.json({ limit: '1mb' }));
-
-app.get('/', (_req, res) => {
-  res.type('text/plain').send(
-    `Angkor NAGA Facebook Live Control Server is running\n` +
-    `Language: Khmer only\n` +
-    `Talk motion: waits for real audio\n` +
-    `Model: ${GEMINI_LIVE_MODEL}\n` +
-    `Voice: ${GEMINI_VOICE_NAME}\n` +
-    `Room default: angkor-naga\n`
-  );
-});
-
-app.get('/health', (_req, res) => {
-  res.json({
-    ok: true,
-    brand: 'Angkor NAGA',
-    language: 'Khmer only',
-    talkMotion: 'waits for real audio',
-    model: GEMINI_LIVE_MODEL,
-    voice: GEMINI_VOICE_NAME,
-    hasGeminiKey: Boolean(GEMINI_API_KEY),
-    rooms: Array.from(rooms.keys()).map((room) => ({
-      room,
-      displays: rooms.get(room).displays.size,
-      controls: rooms.get(room).controls.size,
-    })),
-  });
-});
-
-const server = app.listen(PORT, () => {
-  console.log(`Angkor NAGA Facebook Live Control Server listening on ${PORT}`);
-});
-
-const wss = new WebSocketServer({ server });
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-const rooms = new Map();
-
-function getRoom(roomId = 'angkor-naga') {
-  if (!rooms.has(roomId)) {
-    rooms.set(roomId, {
-      id: roomId,
-      displays: new Set(),
-      controls: new Set(),
-      geminiSession: null,
-      ready: false,
-      pending: [],
-    });
-  }
-  return rooms.get(roomId);
-}
-
-function safeSend(client, payload) {
-  try { if (client.readyState === 1) client.send(JSON.stringify(payload)); } catch {}
-}
-function broadcast(clients, payload) { for (const client of clients) safeSend(client, payload); }
-function cleanText(value, maxLength = 3000) {
-  if (typeof value !== 'string') return '';
-  return value.trim().slice(0, maxLength);
-}
-
-function buildAngkorNagaLiveInstruction() {
-  return `
+const CHARACTERS = {
+  monkey: {
+    voice: process.env.MONKEY_VOICE_NAME || 'Zephyr',
+    label: 'Angkor NAGA Monkey',
+    instruction: `
 អ្នកគឺជាពិធីករស្វាតូចរាជវង្ស / ហនុមានតូច របស់ Angkor NAGA នៅលើ Facebook Live។
 
 ច្បាប់សំខាន់:
@@ -95,22 +34,126 @@ function buildAngkorNagaLiveInstruction() {
 - បើសមរម្យ អាចអញ្ជើញអ្នកមើលឲ្យ follow Angkor NAGA ឬលេងហ្គេម Angkor NAGA។
 
 ឆ្លើយតែចម្លើយខ្មែរ។ កុំខ្លីពេក ត្រូវឲ្យស្តាប់បានប្រហែល ៨ ទៅ ១៥ វិនាទី។
-`.trim();
+`.trim(),
+  },
+
+  alice: {
+    voice: process.env.ALICE_VOICE_NAME || 'Aoede',
+    label: 'Alice',
+    instruction: `
+អ្នកគឺជា Alice ពិធីការិនីវ័យក្មេង សម្លេងផ្អែម ស្រទន់ និងគួរឲ្យស្រឡាញ់ របស់ Angkor NAGA នៅលើ Facebook Live។
+
+ច្បាប់សំខាន់:
+- និយាយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។
+- ទោះអ្នកមើលសួរជាអង់គ្លេស ថៃ ចិន ឬភាសាផ្សេង ក៏ត្រូវឆ្លើយតែជាភាសាខ្មែរ។
+- ឆ្លើយ ២ ទៅ ៣ ប្រយោគខ្លី ប្រហែល ២០ ទៅ ៣៥ ពាក្យ។
+- សម្លេងត្រូវមានអារម្មណ៍៖ ក្មេង ស្រទន់ ផ្អែម រួសរាយ សុភាព និងស្អាត។
+- កុំឲ្យសម្លេងដូចមនុស្សចាស់ ឬជ្រៅពេក។
+- សុវត្ថិភាពសម្រាប់ Facebook Live។
+- កុំចែចង់។ កុំប្រើពាក្យ adult, sexy, baby, girlfriend, love។
+- កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
+- រចនាប័ទ្ម Angkor NAGA៖ សៀវភៅវេទមន្ត អង្គរវត្ត បាយ័ន នាគ ពន្លឺមាស និងរឿងព្រេងខ្មែរ។
+- បើសមរម្យ អាចអញ្ជើញអ្នកមើលឲ្យ follow Angkor NAGA ឬស្វែងយល់ពីពិភព Angkor NAGA។
+
+ឆ្លើយតែចម្លើយខ្មែរ។ សូមនិយាយដោយសម្លេងផ្អែម និងស្រទន់ដូចនារីវ័យក្មេង។
+`.trim(),
+  },
+};
+
+function getCharacterConfig(character = 'monkey') {
+  return CHARACTERS[character] || CHARACTERS.monkey;
+}
+
+const app = express();
+app.use(express.json({ limit: '1mb' }));
+
+const server = app.listen(PORT, () => {
+  console.log(`Angkor NAGA multi-character live server listening on ${PORT}`);
+});
+
+const wss = new WebSocketServer({ server });
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const rooms = new Map();
+
+app.get('/', (_req, res) => {
+  res.type('text/plain').send(
+    `Angkor NAGA Multi-Character Live Server is running\n` +
+    `Model: ${GEMINI_LIVE_MODEL}\n` +
+    `Monkey voice: ${CHARACTERS.monkey.voice}\n` +
+    `Alice voice: ${CHARACTERS.alice.voice}\n` +
+    `Rooms: monkey-room, alice-room\n`
+  );
+});
+
+app.get('/health', (_req, res) => {
+  res.json({
+    ok: true,
+    brand: 'Angkor NAGA',
+    mode: 'multi-character live',
+    model: GEMINI_LIVE_MODEL,
+    characters: {
+      monkey: { voice: CHARACTERS.monkey.voice },
+      alice: { voice: CHARACTERS.alice.voice },
+    },
+    hasGeminiKey: Boolean(GEMINI_API_KEY),
+    rooms: Array.from(rooms.keys()).map((room) => ({
+      room,
+      character: rooms.get(room).character,
+      displays: rooms.get(room).displays.size,
+      controls: rooms.get(room).controls.size,
+    })),
+  });
+});
+
+function getRoom(roomId = 'monkey-room', character = 'monkey') {
+  if (!rooms.has(roomId)) {
+    rooms.set(roomId, {
+      id: roomId,
+      character,
+      displays: new Set(),
+      controls: new Set(),
+      geminiSession: null,
+      ready: false,
+      pending: [],
+    });
+  }
+  const room = rooms.get(roomId);
+  if (character && room.character !== character && !room.geminiSession) {
+    room.character = character;
+  }
+  return room;
+}
+
+function safeSend(client, payload) {
+  try { if (client.readyState === 1) client.send(JSON.stringify(payload)); } catch {}
+}
+
+function broadcast(clients, payload) {
+  for (const client of clients) safeSend(client, payload);
+}
+
+function cleanText(value, maxLength = 3000) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, maxLength);
 }
 
 async function startGemini(room) {
   if (room.geminiSession) return room.geminiSession;
 
+  const cfg = getCharacterConfig(room.character);
   room.ready = false;
-  broadcast(room.controls, { type: 'status', message: 'កំពុងភ្ជាប់សំឡេងស្វាតូច Angkor NAGA...' });
+  broadcast(room.controls, {
+    type: 'status',
+    message: `Connecting ${cfg.label} voice (${cfg.voice})...`,
+  });
 
   const liveConfig = {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: { parts: [{ text: buildAngkorNagaLiveInstruction() }] },
+    systemInstruction: { parts: [{ text: cfg.instruction }] },
     outputAudioTranscription: {},
     speechConfig: {
       voiceConfig: {
-        prebuiltVoiceConfig: { voiceName: GEMINI_VOICE_NAME },
+        prebuiltVoiceConfig: { voiceName: cfg.voice },
       },
     },
   };
@@ -120,7 +163,10 @@ async function startGemini(room) {
     callbacks: {
       onopen: () => {
         room.ready = true;
-        broadcast(room.controls, { type: 'status', message: 'សំឡេងស្វាតូច Angkor NAGA ភ្ជាប់រួចហើយ។' });
+        broadcast(room.controls, {
+          type: 'status',
+          message: `${cfg.label} voice connected with ${cfg.voice}.`,
+        });
         const pending = room.pending.splice(0);
         for (const input of pending) {
           try { room.geminiSession.sendRealtimeInput(input); } catch {}
@@ -136,27 +182,28 @@ async function startGemini(room) {
         if (content?.modelTurn?.parts) {
           for (const part of content.modelTurn.parts) {
             if (part.inlineData?.data) {
-              // IMPORTANT: Display page starts talk motion when this audio arrives.
               broadcast(room.displays, {
                 type: 'audio',
                 data: part.inlineData.data,
                 mimeType: part.inlineData.mimeType || 'audio/pcm;rate=24000',
               });
             }
-            if (part.text) broadcast(room.controls, { type: 'text', text: part.text });
+            if (part.text) {
+              broadcast(room.controls, { type: 'text', text: part.text });
+            }
           }
         }
 
         if (content?.turnComplete) {
           broadcast(room.displays, { type: 'turn_complete' });
-          broadcast(room.controls, { type: 'status', message: 'ឆ្លើយរួចហើយ។' });
+          broadcast(room.controls, { type: 'status', message: 'Answer complete.' });
         }
       },
       onerror: (e) => broadcast(room.controls, { type: 'error', message: e?.message || String(e) }),
       onclose: () => {
         room.ready = false;
         room.geminiSession = null;
-        broadcast(room.controls, { type: 'status', message: 'សំឡេង Gemini បានបិទ។' });
+        broadcast(room.controls, { type: 'status', message: `${cfg.label} voice closed.` });
       },
     },
     config: liveConfig,
@@ -172,29 +219,40 @@ async function sendToGemini(room, input) {
 }
 
 wss.on('connection', (client) => {
-  let currentRoomId = 'angkor-naga';
+  let currentRoomId = 'monkey-room';
   let role = 'unknown';
+  let character = 'monkey';
 
-  safeSend(client, { type: 'status', message: 'ភ្ជាប់ទៅ Angkor NAGA live server រួចហើយ។' });
+  safeSend(client, { type: 'status', message: 'Connected to Angkor NAGA live server.' });
 
   client.on('message', async (raw) => {
     try {
       const msg = JSON.parse(raw.toString());
-      currentRoomId = cleanText(msg.room || currentRoomId || 'angkor-naga', 80) || 'angkor-naga';
-      const room = getRoom(currentRoomId);
+      character = cleanText(msg.character || character || 'monkey', 80) || 'monkey';
+      currentRoomId = cleanText(msg.room || currentRoomId || `${character}-room`, 80) || `${character}-room`;
+      const room = getRoom(currentRoomId, character);
 
       if (msg.type === 'setup_display') {
         role = 'display';
         room.displays.add(client);
-        safeSend(client, { type: 'status', message: `Display connected to room ${currentRoomId}.` });
-        broadcast(room.controls, { type: 'status', message: `Display connected. Displays: ${room.displays.size}` });
+        safeSend(client, {
+          type: 'status',
+          message: `Display connected to ${currentRoomId} as ${room.character}.`,
+        });
+        broadcast(room.controls, {
+          type: 'status',
+          message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}`,
+        });
         return;
       }
 
       if (msg.type === 'setup_control') {
         role = 'control';
         room.controls.add(client);
-        safeSend(client, { type: 'status', message: `Control connected to room ${currentRoomId}. Displays online: ${room.displays.size}` });
+        safeSend(client, {
+          type: 'status',
+          message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}`,
+        });
         return;
       }
 
@@ -202,18 +260,16 @@ wss.on('connection', (client) => {
         const text = cleanText(msg.text, 1000);
         if (!text) return;
 
-        broadcast(room.controls, { type: 'status', message: `ផ្ញើ comment ទៅស្វាតូច Angkor NAGA: ${text}` });
+        const cfg = getCharacterConfig(room.character);
+        broadcast(room.controls, { type: 'status', message: `Sending to ${cfg.label}: ${text}` });
 
-        // IMPORTANT: Do NOT broadcast start_talk here.
-        // Motion starts only when real audio arrives at the display page.
-
+        // Do not send early start_talk. Display starts talking only when real audio arrives.
         await sendToGemini(room, {
           text:
             `មតិអ្នកមើល: "${text}". ` +
-            `ចូរឆ្លើយជាពិធីករស្វាតូច / ហនុមានតូច របស់ Angkor NAGA។ ` +
-            `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ ទោះមតិនោះជាភាសាអ្វីក៏ដោយ។ ` +
-            `ឆ្លើយ ២ ទៅ ៣ ប្រយោគខ្លី ប្រហែល ២០ ទៅ ៣៥ ពាក្យ។ ` +
-            `សំឡេងគួរឲ្យស្រឡាញ់ សប្បាយ និងមានរចនាប័ទ្មវេទមន្តខ្មែរ។`,
+            `តួអង្គដែលត្រូវឆ្លើយ: ${cfg.label}. ` +
+            `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
+            `ឆ្លើយ ២ ទៅ ៣ ប្រយោគខ្លី ប្រហែល ២០ ទៅ ៣៥ ពាក្យ។`,
         });
         return;
       }
@@ -225,9 +281,12 @@ wss.on('connection', (client) => {
   });
 
   client.on('close', () => {
-    const room = getRoom(currentRoomId);
+    const room = getRoom(currentRoomId, character);
     if (role === 'display') room.displays.delete(client);
     if (role === 'control') room.controls.delete(client);
-    broadcast(room.controls, { type: 'status', message: `Client disconnected. Displays: ${room.displays.size}, Controls: ${room.controls.size}` });
+    broadcast(room.controls, {
+      type: 'status',
+      message: `Client disconnected. Displays: ${room.displays.size}, Controls: ${room.controls.size}`,
+    });
   });
 });
