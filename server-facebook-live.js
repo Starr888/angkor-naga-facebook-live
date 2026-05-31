@@ -57,7 +57,7 @@ const CHARACTERS = {
 - រចនាប័ទ្ម Angkor NAGA៖ សៀវភៅវេទមន្ត អង្គរវត្ត បាយ័ន នាគ ពន្លឺមាស និងរឿងព្រេងខ្មែរ។
 ឆ្លើយតែចម្លើយខ្មែរ។ សូមនិយាយដោយសម្លេងផ្អែម ក្មេង សប្បាយ កំប្លែងស្រាល និងរួសរាយ។
 `.trim(),
-  },,
+  },
   'zhou-daguan': {
     voice: process.env.ZHOU_DAGUAN_VOICE_NAME || 'Charon',
     label: 'ជីវ តាក្វាន់ / Zhou Daguan',
