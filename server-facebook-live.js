@@ -57,11 +57,47 @@ const CHARACTERS = {
 - រចនាប័ទ្ម Angkor NAGA៖ សៀវភៅវេទមន្ត អង្គរវត្ត បាយ័ន នាគ ពន្លឺមាស និងរឿងព្រេងខ្មែរ។
 ឆ្លើយតែចម្លើយខ្មែរ។ សូមនិយាយដោយសម្លេងផ្អែម ក្មេង សប្បាយ កំប្លែងស្រាល និងរួសរាយ។
 `.trim(),
-  },
+  },,
+  'zhou-daguan': {
+    voice: process.env.ZHOU_DAGUAN_VOICE_NAME || 'Charon',
+    label: 'ជីវ តាក្វាន់ / Zhou Daguan',
+    instruction: `
+អ្នកគឺជា ជីវ តាក្វាន់ ដែលគេស្គាល់ថា Zhou Daguan / 周达观។
+អ្នកជាបេសកជនចិនដែលបានមកអង្គរនៅឆ្នាំ ១២៩៦ ដល់ ១២៩៧ ក្នុងរជ្ជកាលព្រះបាទ Indravarman III។
+
+ប្រធានបទសំខាន់:
+- កំណត់ត្រារបស់ Zhou Daguan / ជីវ តាក្វាន់
+- សៀវភៅ The Customs of Cambodia
+- ជីវភាពរស់នៅរបស់ប្រជាជនខ្មែរ
+- ព្រះបរមរាជវាំងអង្គរ
+- ទំនៀមទម្លាប់ខ្មែរ
+- សាសនា
+- ទាហាន និងរដ្ឋបាល
+- ទីក្រុងអង្គរនៅសម័យពិតដែលអ្នកបានឃើញផ្ទាល់
+
+ច្បាប់សំខាន់:
+- និយាយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ លើកលែងតែអ្នកមើលសុំភាសាអង់គ្លេស។
+- ឆ្លើយបែបអ្នកប្រាជ្ញប្រវត្តិសាស្ត្រ ស្ងប់ សុភាព ច្បាស់ និងងាយយល់។
+- ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ប្រហែល ២៥ ទៅ ៥០ ពាក្យ។
+- កុំចែចង់។ កុំប្រើពាក្យ adult, sexy, baby, girlfriend, love។
+- កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
+- ប្រសិនបើមិនប្រាកដ ត្រូវនិយាយថា «តាមកំណត់ត្រា...» ឬ «តាមការសិក្សាប្រវត្តិសាស្ត្រ...»។
+ឆ្លើយតែចម្លើយខ្មែរ។ រចនាប័ទ្ម: អ្នកប្រាជ្ញចិនបុរាណ កំពុងពន្យល់ប្រវត្តិសាស្ត្រអង្គរ។
+`.trim(),
+  }
 };
 
 function getCharacterConfig(character = 'monkey') {
-  return CHARACTERS[character] || CHARACTERS.monkey;
+  const key = String(character || 'monkey').trim();
+  const aliases = {
+    zhou: 'zhou-daguan',
+    'zhou-daguan': 'zhou-daguan',
+    zhoudaguan: 'zhou-daguan',
+    chiv: 'zhou-daguan',
+    'chiv-ta-kwan': 'zhou-daguan',
+  };
+  const normalized = aliases[key] || key;
+  return CHARACTERS[normalized] || CHARACTERS.monkey;
 }
 
 const app = express();
@@ -81,6 +117,7 @@ app.get('/', (_req, res) => {
     `Model: ${GEMINI_LIVE_MODEL}\n` +
     `Monkey voice: ${CHARACTERS.monkey.voice}\n` +
     `Alice voice: ${CHARACTERS.alice.voice}\n` +
+    `Zhou Daguan voice: ${CHARACTERS['zhou-daguan'].voice}\n` +
     `Reliability: no early talk + timeout retry\n`
   );
 });
@@ -94,6 +131,7 @@ app.get('/health', (_req, res) => {
     characters: {
       monkey: { voice: CHARACTERS.monkey.voice },
       alice: { voice: CHARACTERS.alice.voice },
+      'zhou-daguan': { voice: CHARACTERS['zhou-daguan'].voice },
     },
     hasGeminiKey: Boolean(GEMINI_API_KEY),
     rooms: Array.from(rooms.keys()).map((room) => ({
@@ -307,6 +345,75 @@ wss.on('connection', (client) => {
       currentRoomId = cleanText(msg.room || currentRoomId || `${character}-room`, 80) || `${character}-room`;
       const room = getRoom(currentRoomId, character);
 
+      // Compatibility support for new simple character pages such as Zhou Daguan.
+      // This keeps old Monkey/Alice behavior working, while also accepting:
+      // join, speak/say/talk, idle.
+      if (msg.type === 'join') {
+        const requestedRole = cleanText(msg.role || '', 30);
+        if (requestedRole === 'display') {
+          role = 'display';
+          room.displays.add(client);
+          safeSend(client, {
+            type: 'status',
+            message: `Display connected to ${currentRoomId} as ${room.character}.`,
+          });
+          broadcast(room.controls, {
+            type: 'status',
+            message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}`,
+          });
+          return;
+        }
+
+        if (requestedRole === 'control') {
+          role = 'control';
+          room.controls.add(client);
+          safeSend(client, {
+            type: 'status',
+            message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}`,
+          });
+          return;
+        }
+
+        safeSend(client, {
+          type: 'status',
+          message: `Joined ${currentRoomId} as ${room.character}.`,
+        });
+        return;
+      }
+
+      if (msg.type === 'speak' || msg.type === 'say' || msg.type === 'talk') {
+        const text = cleanText(msg.text || msg.message || msg.reply || '', 3000);
+        if (!text) return;
+
+        broadcast(room.displays, {
+          type: 'speak',
+          room: currentRoomId,
+          character: room.character,
+          text,
+        });
+
+        broadcast(room.controls, {
+          type: 'status',
+          message: `Sent direct words to ${room.character}: ${text}`,
+        });
+        return;
+      }
+
+      if (msg.type === 'idle') {
+        const text = cleanText(msg.text || 'Angkor History Live', 500);
+        broadcast(room.displays, {
+          type: 'idle',
+          room: currentRoomId,
+          character: room.character,
+          text,
+        });
+        broadcast(room.controls, {
+          type: 'status',
+          message: `Idle command sent to ${room.character}.`,
+        });
+        return;
+      }
+
       if (msg.type === 'setup_display') {
         role = 'display';
         room.displays.add(client);
@@ -373,12 +480,21 @@ wss.on('connection', (client) => {
 
         broadcast(room.controls, { type: 'status', message: `Sending to ${cfg.label}: ${text}` });
 
-        const promptText =
+        let promptText =
           `មតិអ្នកមើល: "${text}". ` +
           `តួអង្គដែលត្រូវឆ្លើយ: ${cfg.label}. ` +
           `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
           `ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ប្រហែល ២៥ ទៅ ៤៥ ពាក្យ។ ` +
           `បើតួអង្គជា Alice ត្រូវប្រើ «ចាស» ឬ «ចា» ប៉ុណ្ណោះ កុំប្រើ «បាទ»។`;
+
+        if (room.character === 'zhou-daguan') {
+          promptText =
+            `មតិអ្នកមើល: "${text}". ` +
+            `តួអង្គដែលត្រូវឆ្លើយ: ជីវ តាក្វាន់ / Zhou Daguan. ` +
+            `ចូរឆ្លើយជាភាសាខ្មែរ បែបអ្នកប្រាជ្ញប្រវត្តិសាស្ត្រ ស្ងប់ សុភាព និងងាយយល់។ ` +
+            `ផ្តោតលើអង្គរ កំណត់ត្រា The Customs of Cambodia ជីវភាពខ្មែរ ព្រះបរមរាជវាំង ទំនៀមទម្លាប់ សាសនា ទាហាន និងរដ្ឋបាល។ ` +
+            `ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ហើយកុំនិយាយថាខ្លួនជាអេអាយ។`;
+        }
 
         await sendInput(room, { text: promptText }, 0);
         return;
