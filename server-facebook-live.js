@@ -94,7 +94,18 @@ const CHARACTERS = {
 };
 
 function getCharacterConfig(character = 'monkey') {
-  return CHARACTERS[character] || CHARACTERS.monkey;
+  const key = String(character || 'monkey').trim();
+  const aliases = {
+    sovanna: 'sovannamaccha',
+    sovannamaccha: 'sovannamaccha',
+    'sovanna-maccha': 'sovannamaccha',
+    'sovanna-macha': 'sovannamaccha',
+    zhou: 'zhou-daguan',
+    'zhou-daguan': 'zhou-daguan',
+    zhoudaguan: 'zhou-daguan',
+  };
+  const normalized = aliases[key] || key;
+  return CHARACTERS[normalized] || CHARACTERS.monkey;
 }
 
 const app = express();
@@ -440,7 +451,7 @@ wss.on('connection', (client) => {
 
         broadcast(room.controls, { type: 'status', message: `Sending to ${cfg.label}: ${text}` });
 
-        const promptText =
+        let promptText =
           `មតិអ្នកមើល: "${text}". ` +
           `តួអង្គដែលត្រូវឆ្លើយ: ${cfg.label}. ` +
           `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
