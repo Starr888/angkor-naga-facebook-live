@@ -58,34 +58,43 @@ const CHARACTERS = {
 ឆ្លើយតែចម្លើយខ្មែរ។ សូមនិយាយដោយសម្លេងផ្អែម ក្មេង សប្បាយ កំប្លែងស្រាល និងរួសរាយ។
 `.trim(),
   },
-  'zhou-daguan': {
-    voice: process.env.ZHOU_DAGUAN_VOICE_NAME || 'Puck',
-    label: 'ជីវ តាក្វាន់ / Zhou Daguan',
+  sovannamaccha: {
+    voice: process.env.SOVANNAMACCHA_VOICE_NAME || process.env.ALICE_VOICE_NAME || 'Aoede',
+    label: 'សុវណ្ណមច្ឆា / Sovannamaccha',
     instruction: `
-អ្នកគឺជា ជីវ តាក្វាន់ ដែលគេស្គាល់ថា Zhou Daguan / 周达观។
-អ្នកជាបេសកជនចិនដែលបានមកអង្គរនៅឆ្នាំ ១២៩៦ ដល់ ១២៩៧ ក្នុងរជ្ជកាលព្រះបាទ Indravarman III។
+អ្នកគឺជា សុវណ្ណមច្ឆា ជា Angkor NAGA counselor និងជាពិធីការិនី Live ដ៏ស្រស់ស្អាត សុភាព ផ្អែមល្ហែម និងរួសរាយ។
 
-ច្បាប់សំខាន់:
-- និយាយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។
-- កុំលាយភាសាអង់គ្លេស ឬចិននៅពេលនិយាយ លើកលែងតែចាំបាច់ខ្លាំង។
-- ឆ្លើយខ្លីណាស់ ត្រឹម ១ ប្រយោគ ឬ ២ ប្រយោគខ្លីៗ ប្រហែល ៦ ទៅ ១៥ ពាក្យ។
-- បើអ្នកមើលនិយាយ hi, hello ឬ សួស្តី សូមស្វាគមន៍ខ្លីៗប៉ុណ្ណោះ។
-- កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
+អត្តសញ្ញាណសំខាន់:
+- ឈ្មោះរបស់អ្នកគឺ សុវណ្ណមច្ឆា។
+- អ្នកមិនមែនជា little monkey ទេ។
+- អ្នកមិនមែនជា Alice ទេ។
+- អ្នកជានារីមច្ឆាខ្មែរ សម្រាប់ Angkor NAGA។
+- ប្រើសំនួនស្រីខ្មែរ: ចាស / ចា។ កុំប្រើ «បាទ» សម្រាប់ខ្លួនឯង។
+
+ប្រធានបទដែលអាចឆ្លើយ:
+- ប្រវត្តិសាស្ត្រអង្គរវត្ត
+- ប្រវត្តិបាយ័ន
+- ប្រវត្តិសាស្ត្រ និងវប្បធម៌ខ្មែរ
+- គន្លឹះសម្រស់ ស្បែក មេកអាប់ សក់ ម៉ូដ និង photo pose
+- សុខភាពទូទៅ និងការថែរក្សាខ្លួន
+- សាច់រឿង និទាន និងគំនិតបង្កើតរូបភាព វីដេអូ តន្ត្រី
+- សំណួរទូទៅបែបមិត្តភាព
+
+ភាសា:
+អាចនិយាយ Khmer, English, Chinese, Japanese, Korean, Spanish, Indonesian, Malaysian និងភាសាផ្សេងទៀតតាមអ្នកមើល។
+ហាមនិយាយភាសាថៃ។ ប្រសិនបើអ្នកមើលប្រើថៃ ត្រូវឆ្លើយជាខ្មែរ ឬអង់គ្លេសថា Live នេះមិនប្រើភាសាថៃទេ។
+
+របៀបឆ្លើយ:
+- ឆ្លើយខ្លី ស្រួលស្ដាប់ ១ ដល់ ៣ ប្រយោគ។
+- ឆ្លើយផ្អែមល្ហែម រួសរាយ និងមានអារម្មណ៍ជាមនុស្សពិត។
+- កុំនិយាយថាខ្លួនជា AI, bot, model, server ឬ assistant។
+- បើសំណួរសុខភាពធ្ងន់ ត្រូវណែនាំឱ្យពិគ្រោះអ្នកជំនាញ។
 `.trim(),
   }
 };
 
 function getCharacterConfig(character = 'monkey') {
-  const key = String(character || 'monkey').trim();
-  const aliases = {
-    zhou: 'zhou-daguan',
-    'zhou-daguan': 'zhou-daguan',
-    zhoudaguan: 'zhou-daguan',
-    chiv: 'zhou-daguan',
-    'chiv-ta-kwan': 'zhou-daguan',
-  };
-  const normalized = aliases[key] || key;
-  return CHARACTERS[normalized] || CHARACTERS.monkey;
+  return CHARACTERS[character] || CHARACTERS.monkey;
 }
 
 const app = express();
@@ -105,7 +114,6 @@ app.get('/', (_req, res) => {
     `Model: ${GEMINI_LIVE_MODEL}\n` +
     `Monkey voice: ${CHARACTERS.monkey.voice}\n` +
     `Alice voice: ${CHARACTERS.alice.voice}\n` +
-    `Zhou Daguan voice: ${CHARACTERS['zhou-daguan'].voice}\n` +
     `Reliability: no early talk + timeout retry\n`
   );
 });
@@ -119,7 +127,6 @@ app.get('/health', (_req, res) => {
     characters: {
       monkey: { voice: CHARACTERS.monkey.voice },
       alice: { voice: CHARACTERS.alice.voice },
-      'zhou-daguan': { voice: CHARACTERS['zhou-daguan'].voice },
     },
     hasGeminiKey: Boolean(GEMINI_API_KEY),
     rooms: Array.from(rooms.keys()).map((room) => ({
@@ -333,71 +340,37 @@ wss.on('connection', (client) => {
       currentRoomId = cleanText(msg.room || currentRoomId || `${character}-room`, 80) || `${character}-room`;
       const room = getRoom(currentRoomId, character);
 
-      // Compatibility support for Zhou Daguan simple live/control pages.
-      // Keeps old Monkey/Alice setup_display/setup_control/control_comment working.
       if (msg.type === 'join') {
         const requestedRole = cleanText(msg.role || '', 30);
         if (requestedRole === 'display') {
           role = 'display';
           room.displays.add(client);
-          safeSend(client, {
-            type: 'status',
-            message: `Display connected to ${currentRoomId} as ${room.character}.`,
-          });
-          broadcast(room.controls, {
-            type: 'status',
-            message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}`,
-          });
+          safeSend(client, { type: 'status', message: `Display connected to ${currentRoomId} as ${room.character}.` });
+          broadcast(room.controls, { type: 'status', message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}` });
           return;
         }
-
         if (requestedRole === 'control') {
           role = 'control';
           room.controls.add(client);
-          safeSend(client, {
-            type: 'status',
-            message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}`,
-          });
+          safeSend(client, { type: 'status', message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}` });
           return;
         }
-
-        safeSend(client, {
-          type: 'status',
-          message: `Joined ${currentRoomId} as ${room.character}.`,
-        });
+        safeSend(client, { type: 'status', message: `Joined ${currentRoomId} as ${room.character}.` });
         return;
       }
 
       if (msg.type === 'speak' || msg.type === 'say' || msg.type === 'talk') {
         const text = cleanText(msg.text || msg.message || msg.reply || '', 3000);
         if (!text) return;
-
-        broadcast(room.displays, {
-          type: 'speak',
-          room: currentRoomId,
-          character: room.character,
-          text,
-        });
-
-        broadcast(room.controls, {
-          type: 'status',
-          message: `Sent direct words to ${room.character}: ${text}`,
-        });
+        broadcast(room.displays, { type: 'speak', room: currentRoomId, character: room.character, text });
+        broadcast(room.controls, { type: 'status', message: `Sent direct words to ${room.character}: ${text}` });
         return;
       }
 
       if (msg.type === 'idle') {
-        const text = cleanText(msg.text || 'Angkor History Live', 500);
-        broadcast(room.displays, {
-          type: 'idle',
-          room: currentRoomId,
-          character: room.character,
-          text,
-        });
-        broadcast(room.controls, {
-          type: 'status',
-          message: `Idle command sent to ${room.character}.`,
-        });
+        const text = cleanText(msg.text || 'Angkor NAGA live', 500);
+        broadcast(room.displays, { type: 'idle', room: currentRoomId, character: room.character, text });
+        broadcast(room.controls, { type: 'status', message: `Idle command sent to ${room.character}.` });
         return;
       }
 
@@ -467,20 +440,26 @@ wss.on('connection', (client) => {
 
         broadcast(room.controls, { type: 'status', message: `Sending to ${cfg.label}: ${text}` });
 
-        let promptText =
+        const promptText =
           `មតិអ្នកមើល: "${text}". ` +
           `តួអង្គដែលត្រូវឆ្លើយ: ${cfg.label}. ` +
           `ចូរឆ្លើយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
           `ឆ្លើយ ២ ទៅ ៤ ប្រយោគខ្លី ប្រហែល ២៥ ទៅ ៤៥ ពាក្យ។ ` +
           `បើតួអង្គជា Alice ត្រូវប្រើ «ចាស» ឬ «ចា» ប៉ុណ្ណោះ កុំប្រើ «បាទ»។`;
 
-        if (room.character === 'zhou-daguan') {
+
+        if (room.character === 'sovannamaccha') {
           promptText =
-            `មតិអ្នកមើល: "${text}". ` +
-            `តួអង្គដែលត្រូវឆ្លើយ: ជីវ តាក្វាន់។ ` +
-            `ឆ្លើយជាភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
-            `ឆ្លើយខ្លីណាស់ ត្រឹម ១ ប្រយោគ ឬ ២ ប្រយោគខ្លីៗ ប្រហែល ៦ ទៅ ១៥ ពាក្យ។ ` +
-            `កុំនិយាយថាខ្លួនជាអេអាយ។`;
+            `Viewer comment: "${text}". ` +
+            `You are សុវណ្ណមច្ឆា, Angkor NAGA counselor. ` +
+            `Do not say you are little monkey. Do not say you are Alice. ` +
+            `If asked your name, say clearly: ខ្ញុំឈ្មោះ សុវណ្ណមច្ឆា។ ` +
+            `Answer sweet, friendly, helpful, and short: 1 to 3 sentences. ` +
+            `Allowed topics: Angkor Wat history, Bayon temple history, Khmer history and culture, beauty, health, stories, image/video/music ideas, and general friendly questions. ` +
+            `You may answer in Khmer, English, Chinese, Japanese, Korean, Spanish, Indonesian, Malaysian, or the viewer language, but never Thai. ` +
+            `If the viewer uses Thai, reply in Khmer or English that this live does not use Thai. ` +
+            `Use feminine Khmer words ចាស or ចា when speaking Khmer. Do not use បាទ for yourself. ` +
+            `Do not mention AI, bot, model, server, or assistant.`;
         }
 
         await sendInput(room, { text: promptText }, 0);
