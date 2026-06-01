@@ -57,7 +57,7 @@ const CHARACTERS = {
 - រចនាប័ទ្ម Angkor NAGA៖ សៀវភៅវេទមន្ត អង្គរវត្ត បាយ័ន នាគ ពន្លឺមាស និងរឿងព្រេងខ្មែរ។
 ឆ្លើយតែចម្លើយខ្មែរ។ សូមនិយាយដោយសម្លេងផ្អែម ក្មេង សប្បាយ កំប្លែងស្រាល និងរួសរាយ។
 `.trim(),
-  },,
+  },
   'zhou-daguan': {
     voice: process.env.ZHOU_DAGUAN_VOICE_NAME || 'Puck',
     label: 'ជីវ តាក្វាន់ / Zhou Daguan',
@@ -76,7 +76,16 @@ const CHARACTERS = {
 };
 
 function getCharacterConfig(character = 'monkey') {
-  return CHARACTERS[character] || CHARACTERS.monkey;
+  const key = String(character || 'monkey').trim();
+  const aliases = {
+    zhou: 'zhou-daguan',
+    'zhou-daguan': 'zhou-daguan',
+    zhoudaguan: 'zhou-daguan',
+    chiv: 'zhou-daguan',
+    'chiv-ta-kwan': 'zhou-daguan',
+  };
+  const normalized = aliases[key] || key;
+  return CHARACTERS[normalized] || CHARACTERS.monkey;
 }
 
 const app = express();
@@ -96,6 +105,7 @@ app.get('/', (_req, res) => {
     `Model: ${GEMINI_LIVE_MODEL}\n` +
     `Monkey voice: ${CHARACTERS.monkey.voice}\n` +
     `Alice voice: ${CHARACTERS.alice.voice}\n` +
+    `Zhou Daguan voice: ${CHARACTERS['zhou-daguan'].voice}\n` +
     `Reliability: no early talk + timeout retry\n`
   );
 });
@@ -109,6 +119,7 @@ app.get('/health', (_req, res) => {
     characters: {
       monkey: { voice: CHARACTERS.monkey.voice },
       alice: { voice: CHARACTERS.alice.voice },
+      'zhou-daguan': { voice: CHARACTERS['zhou-daguan'].voice },
     },
     hasGeminiKey: Boolean(GEMINI_API_KEY),
     rooms: Array.from(rooms.keys()).map((room) => ({
@@ -322,37 +333,71 @@ wss.on('connection', (client) => {
       currentRoomId = cleanText(msg.room || currentRoomId || `${character}-room`, 80) || `${character}-room`;
       const room = getRoom(currentRoomId, character);
 
+      // Compatibility support for Zhou Daguan simple live/control pages.
+      // Keeps old Monkey/Alice setup_display/setup_control/control_comment working.
       if (msg.type === 'join') {
         const requestedRole = cleanText(msg.role || '', 30);
         if (requestedRole === 'display') {
           role = 'display';
           room.displays.add(client);
-          safeSend(client, { type: 'status', message: `Display connected to ${currentRoomId} as ${room.character}.` });
-          broadcast(room.controls, { type: 'status', message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}` });
+          safeSend(client, {
+            type: 'status',
+            message: `Display connected to ${currentRoomId} as ${room.character}.`,
+          });
+          broadcast(room.controls, {
+            type: 'status',
+            message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}`,
+          });
           return;
         }
+
         if (requestedRole === 'control') {
           role = 'control';
           room.controls.add(client);
-          safeSend(client, { type: 'status', message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}` });
+          safeSend(client, {
+            type: 'status',
+            message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}`,
+          });
           return;
         }
-        safeSend(client, { type: 'status', message: `Joined ${currentRoomId} as ${room.character}.` });
+
+        safeSend(client, {
+          type: 'status',
+          message: `Joined ${currentRoomId} as ${room.character}.`,
+        });
         return;
       }
 
       if (msg.type === 'speak' || msg.type === 'say' || msg.type === 'talk') {
         const text = cleanText(msg.text || msg.message || msg.reply || '', 3000);
         if (!text) return;
-        broadcast(room.displays, { type: 'speak', room: currentRoomId, character: room.character, text });
-        broadcast(room.controls, { type: 'status', message: `Sent direct words to ${room.character}: ${text}` });
+
+        broadcast(room.displays, {
+          type: 'speak',
+          room: currentRoomId,
+          character: room.character,
+          text,
+        });
+
+        broadcast(room.controls, {
+          type: 'status',
+          message: `Sent direct words to ${room.character}: ${text}`,
+        });
         return;
       }
 
       if (msg.type === 'idle') {
         const text = cleanText(msg.text || 'Angkor History Live', 500);
-        broadcast(room.displays, { type: 'idle', room: currentRoomId, character: room.character, text });
-        broadcast(room.controls, { type: 'status', message: `Idle command sent to ${room.character}.` });
+        broadcast(room.displays, {
+          type: 'idle',
+          room: currentRoomId,
+          character: room.character,
+          text,
+        });
+        broadcast(room.controls, {
+          type: 'status',
+          message: `Idle command sent to ${room.character}.`,
+        });
         return;
       }
 
