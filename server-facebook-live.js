@@ -57,49 +57,26 @@ const CHARACTERS = {
 - រចនាប័ទ្ម Angkor NAGA៖ សៀវភៅវេទមន្ត អង្គរវត្ត បាយ័ន នាគ ពន្លឺមាស និងរឿងព្រេងខ្មែរ។
 ឆ្លើយតែចម្លើយខ្មែរ។ សូមនិយាយដោយសម្លេងផ្អែម ក្មេង សប្បាយ កំប្លែងស្រាល និងរួសរាយ។
 `.trim(),
-  },
+  },,
   'zhou-daguan': {
-    voice: process.env.ZHOU_DAGUAN_VOICE_NAME || 'Orus',
+    voice: process.env.ZHOU_DAGUAN_VOICE_NAME || 'Puck',
     label: 'ជីវ តាក្វាន់ / Zhou Daguan',
     instruction: `
 អ្នកគឺជា ជីវ តាក្វាន់ ដែលគេស្គាល់ថា Zhou Daguan / 周达观។
 អ្នកជាបេសកជនចិនដែលបានមកអង្គរនៅឆ្នាំ ១២៩៦ ដល់ ១២៩៧ ក្នុងរជ្ជកាលព្រះបាទ Indravarman III។
 
-ប្រធានបទសំខាន់:
-- កំណត់ត្រារបស់ Zhou Daguan / ជីវ តាក្វាន់
-- សៀវភៅ The Customs of Cambodia
-- ជីវភាពរស់នៅរបស់ប្រជាជនខ្មែរ
-- ព្រះបរមរាជវាំងអង្គរ
-- ទំនៀមទម្លាប់ខ្មែរ
-- សាសនា
-- ទាហាន និងរដ្ឋបាល
-- ទីក្រុងអង្គរនៅសម័យពិតដែលអ្នកបានឃើញផ្ទាល់
-
 ច្បាប់សំខាន់:
 - និយាយតែភាសាខ្មែរ 100% ប៉ុណ្ណោះ។
 - កុំលាយភាសាអង់គ្លេស ឬចិននៅពេលនិយាយ លើកលែងតែចាំបាច់ខ្លាំង។
-- សំឡេងត្រូវយឺត ច្បាស់ ស្ងប់ និងដូចអ្នកប្រាជ្ញពន្យល់ប្រវត្តិសាស្ត្រ។
-- ឆ្លើយខ្លី។ ឆ្លើយតែ ១ ប្រយោគ ឬ ២ ប្រយោគខ្លីៗ ប្រហែល ៨ ទៅ ២០ ពាក្យ។
-- បើអ្នកមើលនិយាយ hi, hello, សួស្តី ត្រូវស្វាគមន៍ខ្លីៗ កុំរៀបរាប់ប្រវត្តិសាស្ត្រវែង។
-- កុំចែចង់។ កុំប្រើពាក្យ adult, sexy, baby, girlfriend, love។
+- ឆ្លើយខ្លីណាស់ ត្រឹម ១ ប្រយោគ ឬ ២ ប្រយោគខ្លីៗ ប្រហែល ៦ ទៅ ១៥ ពាក្យ។
+- បើអ្នកមើលនិយាយ hi, hello ឬ សួស្តី សូមស្វាគមន៍ខ្លីៗប៉ុណ្ណោះ។
 - កុំនិយាយថាខ្លួនជាអេអាយ bot model server ឬ assistant។
-- ប្រសិនបើមិនប្រាកដ ត្រូវនិយាយថា «តាមកំណត់ត្រា...» ឬ «តាមការសិក្សាប្រវត្តិសាស្ត្រ...»។
-ឆ្លើយតែចម្លើយខ្មែរ។ រចនាប័ទ្ម: អ្នកប្រាជ្ញចិនបុរាណ កំពុងពន្យល់ប្រវត្តិសាស្ត្រអង្គរ។
 `.trim(),
   }
 };
 
 function getCharacterConfig(character = 'monkey') {
-  const key = String(character || 'monkey').trim();
-  const aliases = {
-    zhou: 'zhou-daguan',
-    'zhou-daguan': 'zhou-daguan',
-    zhoudaguan: 'zhou-daguan',
-    chiv: 'zhou-daguan',
-    'chiv-ta-kwan': 'zhou-daguan',
-  };
-  const normalized = aliases[key] || key;
-  return CHARACTERS[normalized] || CHARACTERS.monkey;
+  return CHARACTERS[character] || CHARACTERS.monkey;
 }
 
 const app = express();
@@ -119,7 +96,6 @@ app.get('/', (_req, res) => {
     `Model: ${GEMINI_LIVE_MODEL}\n` +
     `Monkey voice: ${CHARACTERS.monkey.voice}\n` +
     `Alice voice: ${CHARACTERS.alice.voice}\n` +
-    `Zhou Daguan voice: ${CHARACTERS['zhou-daguan'].voice}\n` +
     `Reliability: no early talk + timeout retry\n`
   );
 });
@@ -133,7 +109,6 @@ app.get('/health', (_req, res) => {
     characters: {
       monkey: { voice: CHARACTERS.monkey.voice },
       alice: { voice: CHARACTERS.alice.voice },
-      'zhou-daguan': { voice: CHARACTERS['zhou-daguan'].voice },
     },
     hasGeminiKey: Boolean(GEMINI_API_KEY),
     rooms: Array.from(rooms.keys()).map((room) => ({
@@ -347,72 +322,37 @@ wss.on('connection', (client) => {
       currentRoomId = cleanText(msg.room || currentRoomId || `${character}-room`, 80) || `${character}-room`;
       const room = getRoom(currentRoomId, character);
 
-      // Compatibility support for new simple character pages such as Zhou Daguan.
-      // This keeps old Monkey/Alice behavior working, while also accepting:
-      // join, speak/say/talk, idle.
       if (msg.type === 'join') {
         const requestedRole = cleanText(msg.role || '', 30);
         if (requestedRole === 'display') {
           role = 'display';
           room.displays.add(client);
-          safeSend(client, {
-            type: 'status',
-            message: `Display connected to ${currentRoomId} as ${room.character}.`,
-          });
-          broadcast(room.controls, {
-            type: 'status',
-            message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}`,
-          });
+          safeSend(client, { type: 'status', message: `Display connected to ${currentRoomId} as ${room.character}.` });
+          broadcast(room.controls, { type: 'status', message: `Display connected. Character: ${room.character}. Displays: ${room.displays.size}` });
           return;
         }
-
         if (requestedRole === 'control') {
           role = 'control';
           room.controls.add(client);
-          safeSend(client, {
-            type: 'status',
-            message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}`,
-          });
+          safeSend(client, { type: 'status', message: `Control connected to ${currentRoomId} as ${room.character}. Displays online: ${room.displays.size}` });
           return;
         }
-
-        safeSend(client, {
-          type: 'status',
-          message: `Joined ${currentRoomId} as ${room.character}.`,
-        });
+        safeSend(client, { type: 'status', message: `Joined ${currentRoomId} as ${room.character}.` });
         return;
       }
 
       if (msg.type === 'speak' || msg.type === 'say' || msg.type === 'talk') {
         const text = cleanText(msg.text || msg.message || msg.reply || '', 3000);
         if (!text) return;
-
-        broadcast(room.displays, {
-          type: 'speak',
-          room: currentRoomId,
-          character: room.character,
-          text,
-        });
-
-        broadcast(room.controls, {
-          type: 'status',
-          message: `Sent direct words to ${room.character}: ${text}`,
-        });
+        broadcast(room.displays, { type: 'speak', room: currentRoomId, character: room.character, text });
+        broadcast(room.controls, { type: 'status', message: `Sent direct words to ${room.character}: ${text}` });
         return;
       }
 
       if (msg.type === 'idle') {
         const text = cleanText(msg.text || 'Angkor History Live', 500);
-        broadcast(room.displays, {
-          type: 'idle',
-          room: currentRoomId,
-          character: room.character,
-          text,
-        });
-        broadcast(room.controls, {
-          type: 'status',
-          message: `Idle command sent to ${room.character}.`,
-        });
+        broadcast(room.displays, { type: 'idle', room: currentRoomId, character: room.character, text });
+        broadcast(room.controls, { type: 'status', message: `Idle command sent to ${room.character}.` });
         return;
       }
 
@@ -493,11 +433,8 @@ wss.on('connection', (client) => {
           promptText =
             `មតិអ្នកមើល: "${text}". ` +
             `តួអង្គដែលត្រូវឆ្លើយ: ជីវ តាក្វាន់។ ` +
-            `ឆ្លើយជាភាសាខ្មែរ 100% ប៉ុណ្ណោះ កុំលាយអង់គ្លេស ឬចិន។ ` +
-            `សំឡេងស្ងប់ យឺត និងច្បាស់។ ` +
-            `ឆ្លើយខ្លីណាស់ តែ ១ ប្រយោគ ឬ ២ ប្រយោគខ្លីៗ ប្រហែល ៨ ទៅ ២០ ពាក្យ។ ` +
-            `បើ comment គ្រាន់តែសួស្តី ឬ hi សូមស្វាគមន៍ខ្លីៗ កុំរៀបរាប់វែង។ ` +
-            `បើសួរប្រវត្តិ អាចនិយាយអំពីកំណត់ត្រាអង្គរ ជីវភាពខ្មែរ និងទំនៀមទម្លាប់។ ` +
+            `ឆ្លើយជាភាសាខ្មែរ 100% ប៉ុណ្ណោះ។ ` +
+            `ឆ្លើយខ្លីណាស់ ត្រឹម ១ ប្រយោគ ឬ ២ ប្រយោគខ្លីៗ ប្រហែល ៦ ទៅ ១៥ ពាក្យ។ ` +
             `កុំនិយាយថាខ្លួនជាអេអាយ។`;
         }
 
